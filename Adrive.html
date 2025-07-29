@@ -1,0 +1,270 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ADrive - Office Suite</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      margin: 0;
+      padding: 0;
+      background: #f0f0f0;
+    }
+    .page {
+      display: none;
+      padding: 20px;
+    }
+    .page.active {
+      display: block;
+    }
+    .signin-box {
+      text-align: center;
+      margin-top: 100px;
+    }
+    .signin-form {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+    .signin-form input {
+      margin: 10px 0;
+      padding: 10px;
+      width: 250px;
+      font-size: 16px;
+    }
+    .btn {
+      display: block;
+      width: 200px;
+      margin: 10px auto;
+      padding: 10px;
+      font-size: 16px;
+      border: none;
+      cursor: pointer;
+      border-radius: 5px;
+    }
+    .continue { background-color: #067bf0; color: white; }
+    .signout { background-color: #bb110b; color: white; float: right; margin-top: -50px; }
+    .app-grid {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 20px;
+    }
+    .app-button {
+      background: white;
+      padding: 20px;
+      border-radius: 10px;
+      box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+      cursor: pointer;
+      text-align: center;
+      flex: 1 0 20%;
+    }
+    .tabs {
+      display: flex;
+      gap: 10px;
+      background: #ddd;
+      padding: 10px;
+      border-radius: 6px;
+      flex-wrap: wrap;
+    }
+    .tabs button {
+      background: white;
+      border: 1px solid #ccc;
+      padding: 8px 14px;
+      cursor: pointer;
+      font-weight: bold;
+    }
+    .tab-content {
+      display: none;
+      margin-top: 10px;
+    }
+    .tab-content.active {
+      display: block;
+    }
+    #adocsEditor {
+      background: white;
+      min-height: 300px;
+      padding: 15px;
+      border: 1px solid #ccc;
+    }
+    .file-list {
+      margin-top: 20px;
+    }
+    .file-list h3 {
+      margin-bottom: 10px;
+    }
+    .file-item {
+      background: white;
+      margin: 5px 0;
+      padding: 10px;
+      border: 1px solid #ccc;
+      cursor: pointer;
+    }
+    .signin-form a {
+      color: #0066cc;
+      margin-top: 10px;
+      text-decoration: none;
+      font-size: 14px;
+    }
+  </style>
+</head>
+<body>
+  <div id="signinPage" class="page active">
+    <div class="signin-box">
+      <h1>🌍 ADrive</h1>
+      <p>All your office apps in one place.</p>
+      <div class="signin-form">
+        <input type="email" id="emailInput" placeholder="Enter your email" required>
+        <input type="password" id="passwordInput" placeholder="Enter your password" required>
+        <button class="btn continue" onclick="signIn()">Continue</button>
+        <a href="#" onclick="alert('Password recovery not implemented yet.')">Forgot password?</a>
+        <a href="#" onclick="alert('Account creation not implemented yet.')">Create new account</a>
+      </div>
+    </div>
+  </div>
+
+  <div id="dashboard" class="page">
+    <h2>Welcome to ADrive</h2>
+    <button class="btn signout" onclick="signOut()">Sign Out</button>
+    <div class="app-grid">
+      <div class="app-button" onclick="showPage('adocs')">📝 Adocs</div>
+      <div class="app-button" onclick="showPage('asheet')">📊 Asheet</div>
+      <div class="app-button" onclick="showPage('ashow')">📽️ Ashow</div>
+      <div class="app-button" onclick="showPage('adraw')">🎨 Adraw</div>
+      <div class="app-button" onclick="showPage('adatabase')">🗃️ Adatabase</div>
+      <div class="app-button" onclick="showPage('atranslate')">🌐 Atranslate</div>
+      <div class="app-button" onclick="showPage('aformula')">➗ Aformula</div>
+      <div class="app-button" onclick="showPage('amail')">✉️ Amail</div>
+      <div class="app-button" onclick="showPage('acalendar')">📅 Acalendar</div>
+      <div class="app-button" onclick="showPage('atodo')">✅ Atodo</div>
+      <div class="app-button" onclick="showPage('apdf')">📄 Apdf</div>
+      <div class="app-button" onclick="showPage('achat')">💬 Achat</div>
+    </div>
+    <div class="file-list" id="fileList"></div>
+  </div>
+
+  <!-- Adocs Page -->
+  <div id="adocs" class="page">
+    <h2>📝 Adocs - Editor</h2>
+    <div class="tabs">
+      <button onclick="showTab('home')">Home</button>
+      <button onclick="showTab('insert')">Insert</button>
+      <button onclick="showTab('layout')">Layout</button>
+      <button onclick="showTab('references')">References</button>
+      <button onclick="showTab('review')">Review</button>
+      <button onclick="showTab('view')">View</button>
+      <button onclick="showTab('format')">Format</button>
+      <button onclick="showTab('help')">Help</button>
+    </div>
+    <div id="tab-home" class="tab-content active">
+      <button onclick="format('bold')">Bold</button>
+      <button onclick="format('italic')">Italic</button>
+      <button onclick="format('underline')">Underline</button>
+      <button onclick="saveAdocs()">Save</button>
+      <button onclick="saveAdocsAs()">Save As</button>
+    </div>
+    <div id="tab-insert" class="tab-content">
+      <button onclick="document.execCommand('insertImage', false, prompt('Enter image URL'))">Insert Image</button>
+      <button onclick="document.execCommand('insertOrderedList')">Numbered List</button>
+      <button onclick="document.execCommand('insertUnorderedList')">Bullet List</button>
+    </div>
+    <div id="tab-layout" class="tab-content">
+      <button onclick="alert('Margins option not implemented')">Margins</button>
+      <button onclick="alert('Orientation option not implemented')">Orientation</button>
+    </div>
+    <div id="tab-references" class="tab-content">
+      <button onclick="alert('Add Citation not implemented')">Add Citation</button>
+    </div>
+    <div id="tab-review" class="tab-content">
+      <button onclick="alert('Spell Check not implemented')">Spell Check</button>
+    </div>
+    <div id="tab-view" class="tab-content">
+      <button onclick="alert('Print preview not implemented')">Print Preview</button>
+      <button onclick="alert('Zoom not implemented')">Zoom</button>
+    </div>
+    <div id="tab-format" class="tab-content">
+      <button onclick="format('justifyLeft')">Left</button>
+      <button onclick="format('justifyCenter')">Center</button>
+      <button onclick="format('justifyRight')">Right</button>
+    </div>
+    <div id="tab-help" class="tab-content">
+      <p>Welcome to ADrive Docs! This is your help tab.</p>
+    </div>
+    <div id="adocsEditor" contenteditable="true">Start writing here...</div>
+    <button onclick="showPage('dashboard')" class="btn continue" style="margin-top:20px;">Back to Dashboard</button>
+  </div>
+
+  <script>
+    let currentFileName = "adocs-document";
+
+    function showPage(id) {
+      document.querySelectorAll(".page").forEach(p => p.classList.remove("active"));
+      const el = document.getElementById(id);
+      if (el) {
+        el.classList.add("active");
+        if (id === "dashboard") loadFileList();
+      }
+    }
+
+    function signIn() {
+      const email = document.getElementById("emailInput").value;
+      const password = document.getElementById("passwordInput").value;
+      if (email && password && email.includes("@") && email.includes(".")) {
+        showPage("dashboard");
+      } else {
+        alert("Please enter a valid email and password.");
+      }
+    }
+
+    function signOut() {
+      document.getElementById("emailInput").value = "";
+      document.getElementById("passwordInput").value = "";
+      showPage("signinPage");
+    }
+
+    function showTab(tab) {
+      document.querySelectorAll(".tab-content").forEach(t => t.classList.remove("active"));
+      const tabEl = document.getElementById("tab-" + tab);
+      if (tabEl) tabEl.classList.add("active");
+    }
+
+    function format(command) {
+      document.execCommand(command, false, null);
+    }
+
+    function saveAdocs() {
+      const text = document.getElementById("adocsEditor").innerHTML;
+      localStorage.setItem(currentFileName, text);
+      alert("Document saved as: " + currentFileName);
+    }
+
+    function saveAdocsAs() {
+      const name = prompt("Enter file name:");
+      if (name) {
+        currentFileName = name;
+        saveAdocs();
+        loadFileList();
+      }
+    }
+
+    function loadFileList() {
+      const list = document.getElementById("fileList");
+      if (!list) return;
+      list.innerHTML = '<h3>Saved Documents:</h3>';
+      for (let key in localStorage) {
+        if (localStorage.hasOwnProperty(key)) {
+          const div = document.createElement("div");
+          div.className = "file-item";
+          div.textContent = key;
+          div.onclick = () => {
+            currentFileName = key;
+            document.getElementById("adocsEditor").innerHTML = localStorage.getItem(key);
+            showPage("adocs");
+          };
+          list.appendChild(div);
+        }
+      }
+    }
+  </script>
+</body>
+</html>

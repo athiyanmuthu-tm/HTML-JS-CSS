@@ -1,0 +1,318 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MyCloud Office Suite</title>
+    <!-- Include Chart.js for graphing -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+    <style>
+        /* ======== GLOBAL & THEME STYLES ======== */
+        :root {
+            --bg-main: #f4f6f8; --text-main: #333; --bg-sidebar: #0078d4; --text-sidebar: #fff; --hover-sidebar: #005a9e;
+            --bg-secondary: #fff; --border-main: #ddd; --shadow-main: rgba(0,0,0,0.1); --bg-ribbon: #f1f1f1;
+            --btn-primary-bg: #0078d4; --btn-primary-text: #fff; --btn-primary-hover: #005a9e; --accent-delete: #e74c3c;
+            --cell-selected-bg: rgba(0, 120, 212, 0.2); --cell-selected-border: #0078d4;
+        }
+        body.dark-mode {
+            --bg-main: #1e1e1e; --text-main: #d4d4d4; --bg-sidebar: #252526; --text-sidebar: #ccc; --hover-sidebar: #3e3e42;
+            --bg-secondary: #2d2d30; --border-main: #444; --shadow-main: rgba(0,0,0,0.3); --bg-ribbon: #333333;
+            --btn-primary-bg: #0e639c; --btn-primary-text: #fff; --btn-primary-hover: #1177bb; --accent-delete: #ff6655;
+            --cell-selected-bg: rgba(14, 99, 156, 0.4); --cell-selected-border: #1177bb;
+        }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body, html { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; background-color: var(--bg-main); color: var(--text-main); height: 100%; overflow: hidden; }
+        .app-container { display: flex; height: 100vh; }
+        .sidebar { width: 240px; background-color: var(--bg-sidebar); color: var(--text-sidebar); display: flex; flex-direction: column; flex-shrink: 0; }
+        .sidebar-header { padding: 20px; border-bottom: 1px solid var(--hover-sidebar); }
+        .sidebar ul { list-style: none; } .sidebar li a { display: block; padding: 12px 20px; color: var(--text-sidebar); text-decoration: none; transition: background-color 0.2s; }
+        .sidebar li a:hover, .sidebar li.active a { background-color: var(--hover-sidebar); }
+        .main-content { flex-grow: 1; display: flex; flex-direction: column; overflow: hidden; }
+        .btn { background-color: var(--btn-primary-bg); color: var(--btn-primary-text); border: none; padding: 8px 16px; border-radius: 4px; font-size: 14px; cursor: pointer; transition: background-color 0.2s; }
+        .btn:hover { background-color: var(--btn-primary-hover); }
+
+        /* ======== FILE GRID VIEW ======== */
+        #file-view { padding: 25px; height: 100%; display: flex; flex-direction: column; }
+        #file-view header { display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border-main); padding-bottom: 15px; margin-bottom: 25px; }
+        .new-menu { position: relative; }
+        .dropdown-menu { display: none; position: absolute; right: 0; top: 100%; margin-top: 5px; background-color: var(--bg-secondary); border: 1px solid var(--border-main); border-radius: 4px; box-shadow: 0 4px 12px var(--shadow-main); list-style-type: none; width: 200px; z-index: 10; }
+        .dropdown-menu.show { display: block; }
+        .dropdown-menu li:hover { background-color: var(--bg-main); }
+        .file-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 20px; overflow-y: auto; }
+        .file-item { position: relative; background-color: var(--bg-secondary); border: 1px solid var(--border-main); border-radius: 4px; padding: 20px; text-align: center; cursor: pointer; transition: all 0.2s; }
+        .file-item:hover { box-shadow: 0 4px 12px var(--shadow-main); transform: translateY(-3px); }
+        .context-menu { display: none; position: absolute; background-color: var(--bg-secondary); border: 1px solid var(--border-main); box-shadow: 0 2px 10px var(--shadow-main); border-radius: 5px; z-index: 1000; list-style: none; }
+        .context-menu li { padding: 8px 15px; cursor: pointer; }
+        .context-menu li:hover { background-color: var(--bg-main); } .context-menu .delete { color: var(--accent-delete); }
+        
+        /* ======== EDITOR & RIBBON STYLES ======== */
+        .editor-view { display: none; flex-direction: column; height: 100%; }
+        .editor-header { display: flex; align-items: center; justify-content: space-between; padding: 10px 20px; background-color: var(--bg-ribbon); border-bottom: 1px solid var(--border-main); flex-shrink: 0; }
+        .ribbon { background-color: var(--bg-ribbon); border-bottom: 1px solid var(--border-main); padding: 0 20px; flex-shrink: 0; }
+        .ribbon-tabs { display: flex; list-style: none; }
+        .ribbon-tab { padding: 10px 15px; cursor: pointer; font-size: 14px; border-bottom: 3px solid transparent; }
+        .ribbon-tab.active { font-weight: 600; border-bottom: 3px solid var(--btn-primary-bg); }
+        .ribbon-panels { padding: 10px; background-color: var(--bg-ribbon); }
+        .ribbon-panel { display: none; gap: 5px; align-items: center; flex-wrap: wrap; }
+        .ribbon-panel.active { display: flex; }
+        .ribbon-group { display: flex; align-items: center; padding: 0 10px; gap: 5px; }
+        .separator { width: 1px; height: 25px; background-color: var(--border-main); margin: 0 5px; }
+        .ribbon-button { background: none; border: 1px solid transparent; padding: 5px; border-radius: 3px; cursor: pointer; color: var(--text-main); }
+        .ribbon-button:hover { background-color: var(--bg-main); }
+        .ribbon-select, .ribbon-input { border: 1px solid var(--border-main); background-color: var(--bg-secondary); color: var(--text-main); border-radius: 3px; padding: 4px; }
+        .ribbon-input[type="color"] { padding: 0; border: none; width: 24px; height: 24px; cursor: pointer; }
+        .editor-body { display: flex; flex-grow: 1; overflow: hidden; }
+
+        /* DOC EDITOR */
+        .doc-content-wrapper { flex-grow: 1; overflow: auto; background-color: var(--bg-main); padding: 20px; }
+        .doc-content { background-color: var(--bg-secondary); color: var(--text-main); min-height: 100%; box-shadow: 0 0 10px var(--shadow-main); padding: 40px; outline: none; transition: transform 0.2s ease; transform-origin: top center; }
+
+        /* SLIDE EDITOR */
+        .slide-thumbnail-pane { width: 180px; background-color: var(--bg-ribbon); padding: 10px; overflow-y: auto; flex-shrink: 0; border-right: 1px solid var(--border-main); }
+        .slide-thumbnail { height: 90px; border: 2px solid var(--border-main); background-color: var(--bg-secondary); margin-bottom: 10px; cursor: pointer; transform: scale(0.95); transition: all 0.2s; }
+        .slide-thumbnail:hover { border-color: var(--btn-primary-hover); }
+        .slide-thumbnail.active { border-color: var(--btn-primary-bg); transform: scale(1); }
+        .slide-content-wrapper { flex-grow: 1; background-color: var(--bg-main); padding: 20px; overflow: auto; display: flex; justify-content: center; align-items: flex-start; }
+        .slide-content { background: var(--bg-secondary); width: 960px; height: 540px; flex-shrink: 0; box-shadow: 0 0 10px var(--shadow-main); padding: 40px; }
+        .slide-content[contenteditable="true"] { outline: none; }
+        .presentation-mode { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: #000; z-index: 9999; display: flex; justify-content: center; align-items: center; }
+        .presentation-slide { width: 90vw; height: 50.625vw; /* 16:9 aspect ratio */ max-height: 90vh; max-width: 160vh; background: var(--bg-secondary); color: var(--text-main); padding: 40px; }
+
+        /* DATA SHEET EDITOR */
+        .sheet-content-wrapper { flex-grow: 1; overflow: auto; position: relative; }
+        #sheet-editor-table { border-collapse: collapse; }
+        #sheet-editor-table td { border: 1px solid var(--border-main); padding: 8px; min-width: 80px; white-space: nowrap; }
+        #sheet-editor-table th { border: 1px solid var(--border-main); padding: 8px; background-color: var(--bg-ribbon); position: sticky; top: 0; z-index: 2; }
+        #sheet-editor-table td.selected { background-color: var(--cell-selected-bg); box-shadow: inset 0 0 0 1px var(--cell-selected-border); }
+        .chart-container { position: absolute; background: var(--bg-secondary); border: 1px solid var(--border-main); box-shadow: 0 4px 12px var(--shadow-main); resize: both; overflow: auto; padding: 10px; }
+        
+        /* MODAL DIALOG */
+        .modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.6); z-index: 5000; display: none; justify-content: center; align-items: center; }
+        .modal-content { background: var(--bg-secondary); padding: 20px; border-radius: 8px; width: 400px; }
+    </style>
+</head>
+<body>
+    <div class="app-container">
+        <nav class="sidebar"><div class="sidebar-header"><h2>MyCloud Suite</h2></div><ul><li class="active"><a href="#">My Files</a></li></ul></nav>
+        <main class="main-content">
+            <div id="file-view" style="display: flex;">
+                <header><h1>My Files</h1><div class="new-menu"><button id="new-button" class="btn">New +</button><ul id="new-dropdown" class="dropdown-menu"><li data-type="doc">Doc</li><li data-type="show-slide">Slide</li><li data-type="data-sheet">Sheet</li></ul></div></header>
+                <div id="file-grid" class="file-grid"></div>
+            </div>
+            <div id="editor-container"></div>
+        </main>
+    </div>
+    <ul id="context-menu" class="context-menu"><li id="delete-option" class="delete">Delete</li></ul>
+    <div id="chart-modal" class="modal-overlay">
+        <div class="modal-content">
+            <h3>Insert Chart</h3>
+            <p>Select a range of cells first. Assumes first row/column is labels.</p>
+            <label for="chart-type">Chart Type:</label>
+            <select id="chart-type"><option value="bar">Bar Chart</option><option value="pie">Pie Chart</option></select>
+            <hr style="margin: 10px 0;">
+            <button id="generate-chart-btn" class="btn">Generate</button>
+            <button id="close-chart-modal-btn" style="background: #888; margin-left: 10px;">Cancel</button>
+        </div>
+    </div>
+    
+    <script>
+    document.addEventListener('DOMContentLoaded', () => {
+        // --- GLOBAL ELEMENTS & STATE ---
+        const fileView = document.getElementById('file-view'), newButton = document.getElementById('new-button'), newDropdown = document.getElementById('new-dropdown');
+        const fileGrid = document.getElementById('file-grid'), contextMenu = document.getElementById('context-menu'), deleteOption = document.getElementById('delete-option');
+        const editorContainer = document.getElementById('editor-container'), chartModal = document.getElementById('chart-modal');
+        let activeFileElement = null, editorState = {}, currentZoom = 1;
+
+        // --- THEME ---
+        const applyTheme = (theme) => document.body.classList.toggle('dark-mode', theme === 'dark');
+        const toggleTheme = () => { const isDark = document.body.classList.toggle('dark-mode'); localStorage.setItem('theme', isDark ? 'dark' : 'light'); };
+        applyTheme(localStorage.getItem('theme') || 'light');
+
+        // --- FILE MANAGEMENT & EDITOR CORE ---
+        newButton.addEventListener('click', (e) => { e.stopPropagation(); newDropdown.classList.toggle('show'); });
+        window.addEventListener('click', () => { newDropdown.classList.remove('show'); contextMenu.style.display = 'none'; });
+        newDropdown.addEventListener('click', (e) => {
+            if (e.target.tagName === 'LI') {
+                const fileType = e.target.getAttribute('data-type');
+                const fileName = prompt(`Enter a name for your new ${getFriendlyName(fileType)}:`);
+                if (fileName) { createFile(fileType, fileName); }
+                newDropdown.classList.remove('show');
+            }
+        });
+        deleteOption.addEventListener('click', () => { if (activeFileElement) { activeFileElement.remove(); activeFileElement = null; contextMenu.style.display = 'none'; } });
+
+        function createFile(type, name) { const fileItem = document.createElement('div'); fileItem.className = 'file-item'; fileItem.dataset.type = type; fileItem.dataset.name = name; const icon = {doc:{h:'📄',c:'#2b579a'},'show-slide':{h:'🖥️',c:'#d24726'},'data-sheet':{h:'📊',c:'#217346'}}[type]; fileItem.innerHTML = `<div style="font-size:48px; color:${icon.c}">${icon.h}</div><div>${name}</div>`; fileItem.addEventListener('click', () => openFile(type, name)); fileItem.addEventListener('contextmenu', (e) => { e.preventDefault(); e.stopPropagation(); activeFileElement = fileItem; contextMenu.style.left = `${e.pageX}px`; contextMenu.style.top = `${e.pageY}px`; contextMenu.style.display = 'block'; }); fileGrid.appendChild(fileItem); }
+        
+        function openFile(type, name) {
+            currentZoom = 1;
+            editorState = { type, name, data: {} };
+            if (type === 'show-slide') { editorState.data.slides = [{ content: '<h1>Title Slide</h1><p>Subtitle</p>' }]; editorState.data.currentSlide = 0; }
+            fileView.style.display = 'none';
+            editorContainer.innerHTML = getEditorHTML(type, name);
+            editorContainer.style.display = 'block';
+            setupEditorEventListeners(type);
+            if (type === 'show-slide') renderSlides();
+        }
+        function closeEditor() { fileView.style.display = 'flex'; editorContainer.style.display = 'none'; editorContainer.innerHTML = ''; editorState = {}; }
+
+        // --- DYNAMIC EVENT LISTENER DISPATCHER ---
+        function setupEditorEventListeners(type) {
+            document.querySelector('.close-editor-btn').addEventListener('click', closeEditor);
+            setupRibbonTabs();
+            // Generic View tab listeners
+            document.querySelector('.dark-mode-toggle').addEventListener('click', toggleTheme);
+            if(document.querySelector('.zoom-in')) {
+                document.querySelector('.zoom-in').addEventListener('click', () => updateZoom(0.1));
+                document.querySelector('.zoom-out').addEventListener('click', () => updateZoom(-0.1));
+                document.querySelector('.zoom-reset').addEventListener('click', () => updateZoom(null));
+            }
+            // Type-specific listeners
+            if (type === 'doc') setupDocListeners();
+            if (type === 'show-slide') setupSlideListeners();
+            if (type === 'data-sheet') setupSheetListeners();
+        }
+        function setupRibbonTabs() { const tabs = document.querySelectorAll('.ribbon-tab'), panels = document.querySelectorAll('.ribbon-panel'); tabs.forEach(tab => { tab.addEventListener('click', () => { tabs.forEach(t => t.classList.remove('active')); tab.classList.add('active'); panels.forEach(p => p.classList.toggle('active', p.id === tab.dataset.target)); });});}
+        function updateZoom(amount) {
+            const content = document.querySelector('.doc-content');
+            if(!content) return;
+            if (amount === null) { currentZoom = 1; } else { currentZoom = Math.max(0.5, currentZoom + amount); }
+            content.style.transform = `scale(${currentZoom})`;
+        }
+
+        // --- DOC & SLIDE SHARED FORMATTING LOGIC ---
+        function setupFormattingListeners() {
+            const command = (cmd, val = null) => document.execCommand(cmd, false, val);
+            document.querySelector('.bold-btn').addEventListener('click', () => command('bold'));
+            document.querySelector('.italic-btn').addEventListener('click', () => command('italic'));
+            document.querySelector('.underline-btn').addEventListener('click', () => command('underline'));
+            document.querySelector('.align-left-btn').addEventListener('click', () => command('justifyLeft'));
+            document.querySelector('.align-center-btn').addEventListener('click', () => command('justifyCenter'));
+            document.querySelector('.align-right-btn').addEventListener('click', () => command('justifyRight'));
+            document.querySelector('.bullet-list-btn').addEventListener('click', () => command('insertUnorderedList'));
+            document.querySelector('.number-list-btn').addEventListener('click', () => command('insertOrderedList'));
+            document.querySelector('.font-family-select').addEventListener('change', (e) => command('fontName', e.target.value));
+            document.querySelector('.font-size-select').addEventListener('change', (e) => command('fontSize', e.target.value));
+            document.querySelector('.font-color-input').addEventListener('input', (e) => command('foreColor', e.target.value));
+            document.querySelector('.highlight-color-input').addEventListener('input', (e) => command('hiliteColor', e.target.value));
+        }
+
+        // --- DOC EDITOR LOGIC ---
+        function setupDocListeners() {
+            setupFormattingListeners(); // Shared text formatting
+            const command = (cmd, val = null) => document.execCommand(cmd, false, val);
+            document.querySelector('.insert-hr-btn').addEventListener('click', () => command('insertHorizontalRule'));
+            document.querySelector('.insert-image-btn').addEventListener('click', () => { const url = prompt("Enter image URL:"); if (url) command('insertImage', url); });
+            document.querySelector('.insert-table-btn').addEventListener('click', () => {
+                const rows = prompt("Rows:", 2), cols = prompt("Columns:", 2);
+                if (rows && cols) command('insertHTML', createTableHTML(rows, cols));
+            });
+        }
+        
+        // --- SLIDE EDITOR LOGIC ---
+        function setupSlideListeners() {
+            setupFormattingListeners(); // Shared text formatting for slide content
+            document.querySelector('.add-slide-btn').addEventListener('click', addSlide);
+            document.querySelector('.delete-slide-btn').addEventListener('click', deleteSlide);
+            document.querySelector('.layout-title-btn').addEventListener('click', () => applyLayout('title'));
+            document.querySelector('.layout-content-btn').addEventListener('click', () => applyLayout('content'));
+            document.querySelector('.present-btn').addEventListener('click', startPresentation);
+            document.querySelector('.slide-content').addEventListener('input', () => { editorState.data.slides[editorState.data.currentSlide].content = document.querySelector('.slide-content').innerHTML; });
+        }
+        function renderSlides() {
+            const thumbnailPane = document.querySelector('.slide-thumbnail-pane');
+            thumbnailPane.innerHTML = '';
+            editorState.data.slides.forEach((slide, index) => {
+                const thumb = document.createElement('div');
+                thumb.className = 'slide-thumbnail';
+                if (index === editorState.data.currentSlide) thumb.classList.add('active');
+                thumb.innerHTML = `<div style="transform: scale(0.15); transform-origin: top left; width: 640%; height: 640%; pointer-events: none; color: #333;">${slide.content}</div>`;
+                thumb.addEventListener('click', () => { editorState.data.currentSlide = index; renderSlides(); });
+                thumbnailPane.appendChild(thumb);
+            });
+            document.querySelector('.slide-content').innerHTML = editorState.data.slides[editorState.data.currentSlide].content;
+        }
+        function addSlide() { editorState.data.slides.splice(editorState.data.currentSlide + 1, 0, { content: '<h2>New Slide</h2>' }); editorState.data.currentSlide++; renderSlides(); }
+        function deleteSlide() { if (editorState.data.slides.length <= 1) return alert("Cannot delete the last slide."); editorState.data.slides.splice(editorState.data.currentSlide, 1); if (editorState.data.currentSlide >= editorState.data.slides.length) { editorState.data.currentSlide = editorState.data.slides.length - 1; } renderSlides(); }
+        function applyLayout(layoutType) { const layouts = { title: '<h1>Title Slide</h1><p>Subtitle</p>', content: '<h2>Title and Content</h2><ul><li>Point one</li><li>Point two</li></ul>' }; editorState.data.slides[editorState.data.currentSlide].content = layouts[layoutType]; renderSlides(); }
+        function startPresentation() {
+            const presView = document.createElement('div');
+            presView.className = 'presentation-mode';
+            document.body.appendChild(presView);
+            if (document.documentElement.requestFullscreen) document.documentElement.requestFullscreen();
+            let currentPresSlide = editorState.data.currentSlide;
+            const updatePresSlide = () => { presView.innerHTML = `<div class="presentation-slide">${editorState.data.slides[currentPresSlide].content}</div>`; };
+            const keyHandler = (e) => {
+                if (e.key === 'ArrowRight' && currentPresSlide < editorState.data.slides.length - 1) { currentPresSlide++; updatePresSlide(); }
+                else if (e.key === 'ArrowLeft' && currentPresSlide > 0) { currentPresSlide--; updatePresSlide(); }
+                else if (e.key === 'Escape') document.exitFullscreen();
+            };
+            document.addEventListener('keydown', keyHandler);
+            document.addEventListener('fullscreenchange', () => { if (!document.fullscreenElement) { document.removeEventListener('keydown', keyHandler); presView.remove(); } }, { once: true });
+            updatePresSlide();
+        }
+
+        // --- DATA SHEET LOGIC ---
+        function setupSheetListeners() {
+            const table = document.getElementById('sheet-editor-table');
+            let isSelecting = false;
+            table.addEventListener('mousedown', (e) => { if (e.target.tagName !== 'TD') return; isSelecting = true; document.querySelectorAll('td.selected').forEach(c => c.classList.remove('selected')); e.target.classList.add('selected'); e.preventDefault(); });
+            table.addEventListener('mouseover', (e) => { if (isSelecting && e.target.tagName === 'TD') e.target.classList.add('selected'); });
+            document.addEventListener('mouseup', () => isSelecting = false);
+            document.querySelector('.bold-btn').addEventListener('click', () => getSelectedCells().forEach(c => c.style.fontWeight = c.style.fontWeight === 'bold' ? '' : 'bold'));
+            document.querySelector('.italic-btn').addEventListener('click', () => getSelectedCells().forEach(c => c.style.fontStyle = c.style.fontStyle === 'italic' ? '' : 'italic'));
+            document.querySelector('.font-color-input').addEventListener('input', (e) => getSelectedCells().forEach(c => c.style.color = e.target.value));
+            document.querySelector('.bg-color-input').addEventListener('input', (e) => getSelectedCells().forEach(c => c.style.backgroundColor = e.target.value));
+            document.querySelector('.sum-btn').addEventListener('click', () => calculateAndShow('SUM'));
+            document.querySelector('.avg-btn').addEventListener('click', () => calculateAndShow('AVERAGE'));
+            document.querySelector('.count-btn').addEventListener('click', () => calculateAndShow('COUNT'));
+            document.querySelector('.insert-chart-btn').addEventListener('click', () => chartModal.style.display = 'flex');
+            document.getElementById('close-chart-modal-btn').addEventListener('click', () => chartModal.style.display = 'none');
+            document.getElementById('generate-chart-btn').addEventListener('click', generateChart);
+        }
+        const getSelectedCells = () => document.querySelectorAll('#sheet-editor-table td.selected');
+        function calculateAndShow(operation) { const cells = getSelectedCells(); const numbers = Array.from(cells).map(c => parseFloat(c.textContent)).filter(n => !isNaN(n)); if (numbers.length === 0) return alert("No numerical data selected."); let result; switch(operation) { case 'SUM': result = numbers.reduce((a, b) => a + b, 0); break; case 'AVERAGE': result = numbers.reduce((a, b) => a + b, 0) / numbers.length; break; case 'COUNT': result = numbers.length; break; } alert(`${operation}: ${result.toFixed(2)}`); }
+        function generateChart() { const cells = Array.from(getSelectedCells()); if (cells.length < 2) return alert("Please select at least two cells for a chart."); const labels = Array.from(cells.slice(0, cells.length / 2)).map(c => c.textContent); const data = Array.from(cells.slice(cells.length / 2)).map(c => parseFloat(c.textContent)).filter(n => !isNaN(n)); if (labels.length === 0 || data.length === 0) return alert("Could not extract valid labels and data."); const chartType = document.getElementById('chart-type').value; const container = document.createElement('div'); container.className = 'chart-container'; container.style.width = '400px'; container.style.height = '300px'; container.style.top = '50px'; container.style.left = '50px'; const canvas = document.createElement('canvas'); container.appendChild(canvas); document.querySelector('.sheet-content-wrapper').appendChild(container); new Chart(canvas.getContext('2d'), { type: chartType, data: { labels: labels, datasets: [{ label: 'My Dataset', data: data, backgroundColor: ['#ff6384', '#36a2eb', '#cc65fe', '#ffce56', '#4bc0c0', '#f77825', '#9966ff'] }] } }); chartModal.style.display = 'none'; }
+        
+        // --- HTML GENERATORS ---
+        function getEditorHTML(type, name) {
+            const formattingRibbon = `
+                <div class="ribbon-group"><select class="ribbon-select font-family-select"><option>Arial</option><option>Verdana</option><option>Times New Roman</option></select><select class="ribbon-select font-size-select"><option>1</option><option>2</option><option>3</option><option selected>4</option><option>5</option><option>6</option><option>7</option></select></div><div class="separator"></div>
+                <div class="ribbon-group"><button class="ribbon-button bold-btn" title="Bold"><b>B</b></button><button class="ribbon-button italic-btn" title="Italic"><i>I</i></button><button class="ribbon-button underline-btn" title="Underline"><u>U</u></button></div><div class="separator"></div>
+                <div class="ribbon-group"><input type="color" class="ribbon-input font-color-input" title="Font Color"><input type="color" class="ribbon-input highlight-color-input" title="Highlight Color"></div><div class="separator"></div>
+                <div class="ribbon-group"><button class="ribbon-button align-left-btn" title="Align Left">L</button><button class="ribbon-button align-center-btn" title="Align Center">C</button><button class="ribbon-button align-right-btn" title="Align Right">R</button></div><div class="separator"></div>
+                <div class="ribbon-group"><button class="ribbon-button bullet-list-btn" title="Bulleted List">•</button><button class="ribbon-button number-list-btn" title="Numbered List">1.</button></div>`;
+            
+            const ribbons = {
+                doc: `<div id="home-panel" class="ribbon-panel active">${formattingRibbon}</div>
+                    <div id="insert-panel" class="ribbon-panel"><button class="ribbon-button insert-image-btn">Image</button><button class="ribbon-button insert-table-btn">Table</button><button class="ribbon-button insert-hr-btn">Line</button></div>
+                    <div id="view-panel" class="ribbon-panel"><button class="ribbon-button zoom-in">Zoom In</button><button class="ribbon-button zoom-out">Zoom Out</button><button class="ribbon-button zoom-reset">Reset</button><div class="separator"></div><button class="btn dark-mode-toggle">Toggle Dark Mode</button></div>`,
+                'show-slide': `<div id="home-panel" class="ribbon-panel active">${formattingRibbon}<div class="separator"></div><button class="ribbon-button add-slide-btn">Add Slide</button><button class="ribbon-button delete-slide-btn">Delete Slide</button><div class="separator"></div><span>Layouts:</span><button class="ribbon-button layout-title-btn">Title</button><button class="ribbon-button layout-content-btn">Content</button></div>
+                    <div id="slideshow-panel" class="ribbon-panel"><button class="btn present-btn">Present from Current Slide</button></div>
+                    <div id="view-panel" class="ribbon-panel"><button class="btn dark-mode-toggle">Toggle Dark Mode</button></div>`,
+                'data-sheet': `<div id="home-panel" class="ribbon-panel active"><button class="ribbon-button bold-btn" title="Bold"><b>B</b></button><button class="ribbon-button italic-btn" title="Italic"><i>I</i></button><div class="separator"></div><input type="color" class="ribbon-input font-color-input" title="Font Color"><input type="color" class="ribbon-input bg-color-input" title="Background Color"></div>
+                    <div id="insert-panel" class="ribbon-panel"><button class="ribbon-button insert-chart-btn">Chart</button></div>
+                    <div id="data-panel" class="ribbon-panel"><button class="ribbon-button sum-btn">SUM</button><button class="ribbon-button avg-btn">AVG</button><button class="ribbon-button count-btn">COUNT</button></div>
+                    <div id="view-panel" class="ribbon-panel"><button class="btn dark-mode-toggle">Toggle Dark Mode</button></div>`
+            };
+            const tabNames = { doc: ['Home', 'Insert', 'View'], 'show-slide': ['Home', 'Slide Show', 'View'], 'data-sheet': ['Home', 'Insert', 'Data', 'View'] };
+            const content = {
+                doc: `<div class="doc-content-wrapper"><div class="doc-content" contenteditable="true"><h2>Welcome to Docs</h2><p>Start typing your document here. Use the ribbon above to format your text.</p></div></div>`,
+                'show-slide': `<div class="editor-body"><div class="slide-thumbnail-pane"></div><div class="slide-content-wrapper"><div class="slide-content" contenteditable="true"></div></div></div>`,
+                'data-sheet': `<div class="sheet-content-wrapper"><table id="sheet-editor-table"></table></div>`
+            };
+
+            if (type === 'data-sheet') { let tableHTML = '<thead><tr><th></th>'; for (let i = 0; i < 26; i++) tableHTML += `<th>${String.fromCharCode(65 + i)}</th>`; tableHTML += '</tr></thead><tbody>'; for (let i = 1; i <= 100; i++) { tableHTML += `<tr><th>${i}</th>`; for (let j = 0; j < 26; j++) tableHTML += '<td contenteditable="true"></td>'; tableHTML += '</tr>'; } tableHTML += '</tbody>'; content['data-sheet'] = `<div class="sheet-content-wrapper">${content['data-sheet'].replace('</table>', tableHTML + '</table>')}</div>`; }
+            return `<div class="editor-view"><div class="editor-header"><h2>${name}</h2><button class="close-editor-btn btn">Close</button></div><div class="ribbon"><ul class="ribbon-tabs">${Object.keys(tabNames[type]).map((k, i) => `<li class="ribbon-tab ${i===0 ? 'active':''}" data-target="${Object.keys(ribbons[type].match(/id="([^"]+)"/g).map(m => m.slice(4, -1)))[i]}">${tabNames[type][k]}</li>`).join('')}</ul></div><div class="ribbon-panels">${ribbons[type]}</div>${content[type]}</div>`;
+        }
+        
+        // --- HELPER FUNCTIONS & INITIALIZATION ---
+        const getFriendlyName = (type) => ({ doc: 'Doc', 'show-slide': 'Slide', 'data-sheet': 'Sheet' }[type] || 'File');
+        const createTableHTML = (rows, cols) => { let table = '<table style="border-collapse: collapse; width: 100%;">'; for (let r = 0; r < rows; r++) { table += '<tr>'; for (let c = 0; c < cols; c++) { table += '<td style="border: 1px solid #ccc; padding: 5px;"> </td>'; } table += '</tr>'; } return table + '</table>'; };
+        createFile('doc', 'Project Proposal.doc');
+        createFile('data-sheet', 'Q4-Budget.sheet');
+        createFile('show-slide', 'Presentation.slide');
+    });
+    </script>
+</body>
+</html>
