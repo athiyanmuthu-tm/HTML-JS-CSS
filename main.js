@@ -1,9 +1,4 @@
-var score = 98;
-
-if(score<40){
-    console.log("Improve")
-}
-
-if(score){
-    console.log("ok")
+//for loop
+for (i = 0; i <= 10; i = i+1){
+    console.log(i)
 }
