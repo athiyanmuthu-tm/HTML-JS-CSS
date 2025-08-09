@@ -1,4 +1,4 @@
 //for loop
-for (i = 0; i <= 10; i = i+1){
+for (i = 0; i <= 30; i = i+1){
     console.log(i)
 }
